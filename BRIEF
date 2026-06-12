@@ -1,0 +1,14 @@
+
+## Home Lab — Security Practice Environment
+
+A personal lab built to simulate enterprise environments and practice offensive/defensive techniques hands-on.
+
+**Infrastructure**
+- Proxmox hypervisor hosting a Windows Server 2016 Active Directory domain, Windows 10 clients, and an air-gapped endpoint for malware analysis
+- Dedicated attack platform(laptop) running Parrot OS against intentionally vulnerable targets (VulnHub)
+
+**Practice areas**
+- Active Directory enumeration, lateral movement, privilege escalation
+- Red team vs blue team exercises on isolated networks
+- Vulnerability exploitation and post-exploitation techniques
+- Web app vunerabilities
