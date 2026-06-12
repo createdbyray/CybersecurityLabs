@@ -1,10 +1,10 @@
-#  Security+Digital Forensics Home Lab — Experience Log
+# Security + Digital Forensics Home Lab — Experience Log
 
 A personal lab built to simulate enterprise environments and practise offensive and defensive security techniques hands-on. This repository is an honest log of what I've learned, what worked, what didn't, and where I'm aiming for.
 
 ---
 
-##  Lab Infrastructure
+## Lab Infrastructure
 
 | Host | Role | Key Details |
 |------|------|-------------|
@@ -12,7 +12,7 @@ A personal lab built to simulate enterprise environments and practise offensive 
 | **Windows 10 PC** | Attack targets | Runs intentionally vulnerable VMs sourced from [VulnHub](https://www.vulnhub.com/) |
 | **Parrot OS Laptop** | Attack platform | Used for reconnaissance, exploitation, and post-exploitation against lab targets |
 
-### Network topology
+### Network Topology
 - Proxmox environment simulates a small enterprise: domain controller, domain-joined clients, and a segmented air-gapped endpoint
 - VulnHub machines run on an isolated host-only network — no external exposure
 - Parrot OS attacks are contained entirely within the lab
@@ -39,7 +39,7 @@ Each entry follows the same structure: what I attempted, what worked, what didn'
 
 ---
 
- ica1 | Difficulty: Easy | link:https://www.vulnhub.com/entry/ica-1,748/
+### ICA1 | Difficulty: Easy | [VulnHub Link](https://www.vulnhub.com/entry/ica-1,748/)
 
 **Source:** VulnHub  
 **Date:** 12/06/2026
@@ -48,95 +48,109 @@ Each entry follows the same structure: what I attempted, what worked, what didn'
 > "According to information from our intelligence network, ICA is working on a secret project. We need to find out what the project is. Once you have the access information, send them to us. We will place a backdoor to access the system later. You just focus on what the project is. You will probably have to go through several layers of security. The Agency has full confidence that you will successfully complete this mission. Good Luck, Agent!"
 
 **Approach**
-**1. Reconnaissance — tools used, what I found**
-     INITIALLY:Ran nmap on the target ip address, found Ports 22 for SSH, 80 for http, 3306 and 33060 for mysql were open on the target VM.
-**2. Foothold — vulnerability identified, exploit used**
-     FOUND: There was a vunerability in the web application(qdPM 9.2), through initial enumeration using gobuster i found /core, through anaylsis of this directory utilising the web browser i eventually found the config               file where the database credentials were stored, using these credentials i logged into the sqlserver bypassing the ssl error using the -skip--ssl option.
 
-     ONCE_LOGGED_IN: I listed all the databases available, the most interesting being labeled "staff", upon inspection of "staff" i found various logins corresponding to the staff names, these were base64 encoded                               therefore i decoded it on my local Parrot OS machine using the 'konsole'.
+**1. Reconnaissance**
 
-     CREDENTIALS_FOUND: Once i had access to the various logins i attempted to use all of them through the open SSH port(using hydra) Both Travis and Dexter succeeded.
+Ran Nmap on the target IP address, found ports 22 (SSH), 80 (HTTP), 3306 and 33060 (MySQL) were open on the target VM.
 
-**3. Privilege escalation — method and path to root/SYSTEM**
+**2. Foothold**
 
-   
-     TESTING_USERS: Travis did not have sudo(sudo apk update to test) the only file i saw was a redundant file with a text hint therefore i moved onto Dexter. Dexters account also did not have sudo, however it did have a
-                    hint too, after reading the hint "cat .txt" which contained something along the lines of, i think one of these applications is suspicious. I then proceeded to run "find / -type f -perm -04000 -ls                           2>/dev/null" which revealed a ordinary list apart from a custom built application(/opt/get_access) after anaylisis of this application(running it) it provided this text:
-                                   dexter@debian:~$ /opt/get_access
+There was a vulnerability in the web application (qdPM 9.2). Through initial enumeration using Gobuster I found `/core`. Through analysis of this directory using the web browser, I eventually found the config file where the database credentials were stored. Using these credentials I logged into the SQL server, bypassing the SSL error using the `--skip-ssl` option.
 
-                                    ############################
-                                    ######## ICA #######
-                                    ### ACCESS TO THE SYSTEM ###
-                                    ############################
-                                    
-                                    Server Information:
-                                    
-                                    Firewall: AIwall v9.5.2
-                                    OS: Debian 11 "bullseye"
-                                    Network: Local Secure Network 2 (LSN2) v 2.4.1 ` All services are disabled. Accessing to the system is allowed only within working hours.
-                   I then ran the strings command to properly anaylse what this program was doing, from this i found out it runs the command cat /root/system.info this had to be the way in.
-   FINAL: I ran the following commands to create a malicious cat file that can be used to gain root access(Privillege elevation), this worked by shifting where path first looks for cat, it now looked in temp first which             ran my modified application rather than the official one providing me with root access
+Once logged in, I listed all the databases available — the most interesting being labelled `staff`. Upon inspection I found various logins corresponding to staff names. These were Base64 encoded, so I decoded them on my local Parrot OS machine using the terminal.
 
-                   echo -e '#!/bin/bash\n/bin/bash' > /tmp/cat
-                  chmod +x /tmp/cat
-                  export PATH=/tmp:$PATH
+With the decoded credentials, I attempted to authenticate each one via the open SSH port using Hydra. Both Travis and Dexter succeeded.
 
-          In order to verify this i used, root@debian:/root# ls which returned:
-                                                          root.txt system.info
+**3. Privilege Escalation**
 
-        
+Travis did not have sudo access (`sudo apk update` to test) — the only file present was a redundant file with a text hint, so I moved on to Dexter. Dexter's account also lacked sudo, but contained a hint file which read along the lines of: *"I think one of these applications is suspicious."*
+
+I then ran:
+```bash
+find / -type f -perm -04000 -ls 2>/dev/null
+```
+This revealed a standard list apart from a custom-built application at `/opt/get_access`. Running it produced:
+
+```
+############################
+######## ICA ########
+### ACCESS TO THE SYSTEM ###
+############################
+
+Server Information:
+
+Firewall: AIwall v9.5.2
+OS: Debian 11 "bullseye"
+Network: Local Secure Network 2 (LSN2) v2.4.1
+All services are disabled. Accessing to the system is allowed only within working hours.
+```
+
+Running `strings` on the binary revealed it executes `cat /root/system.info` — this had to be the way in.
+
+I created a malicious `cat` file in `/tmp` and prepended it to `$PATH`, so the system would execute my version instead of the real one:
+
+```bash
+echo -e '#!/bin/bash\n/bin/bash' > /tmp/cat
+chmod +x /tmp/cat
+export PATH=/tmp:$PATH
+```
+
+Running `/opt/get_access` then dropped me into a root shell. Verified with:
+```bash
+root@debian:/root# ls
+root.txt  system.info
+```
+
 **What worked**
-- Successfully employed the use of various pentesting tools such as HYDRA and NMAP 
-- Reinforced knowledge about Privillege Escalation
+- Successfully employed various pentesting tools including Hydra and Nmap
+- Reinforced knowledge of privilege escalation via PATH hijacking
 
 **What didn't work**
-- Initially i could not access the mysql server regardless of the fact they were the correct credentials, after spending around 20 minutes looking for other vunerablities i decided to circle back and realised the issue     was the fact i was using a vpn, which with the virtual machine sql server being configured to allow localhost connections only would not work. After disconnecting from the vpn it finally worked and i could progress.
+- Initially could not access the MySQL server despite using the correct credentials. After spending around 20 minutes looking for other vulnerabilities, I circled back and realised the issue was an active VPN connection — the VM's SQL server was configured to allow localhost connections only, so the VPN routing prevented access. Disconnecting from the VPN resolved it.
 
 **Key takeaway**
-> One concrete thing I'd do differently: i would instead of running agressive nmap scanning techniques employ more stealthy ones to ensure there is no early detection.
+> Instead of running aggressive Nmap scanning techniques from the outset, I would employ stealthier options to reduce the risk of early detection.
 
 ---
----
 
-##  Wins
+## Wins
 
 - Set up a fully functional Active Directory domain from scratch including group policy, user accounts, and DNS
 - Successfully completed various VulnHub machines from initial recon through to root
 - Configured isolated network segments in Proxmox to prevent lab traffic touching the home network
-- Successfully decompiled malware using GHIDRA to anaylse its effects(Petra/Goldeneye and the Mischa Ransomware)
-- Successfully built a case report on a ransomware case(Case samples built via my intentionally compromised windows VM using a hard drive cloning function), anaylsed using "Autopsy"
-- Successfully built a case report on a mock cybercriminals activity using their Phone, PC and location data(Case samples found online, anaylsed using "Autopsy"
-- 
+- Successfully decompiled malware using Ghidra to analyse its effects (Petya/GoldenEye and the Mischa Ransomware)
+- Successfully built a case report on a ransomware incident — case samples created via an intentionally compromised Windows VM using a hard drive cloning function, analysed using Autopsy
+- Successfully built a case report on a mock cybercriminal's activity using their phone, PC, and location data — case samples sourced online, analysed using Autopsy
 
 ---
 
-##  Failures & Lessons
+## Failures & Lessons
 
-- **network misconfiguration** forgot to turn off vpn in order to access local host
-- **accidental detection** accidentally attempted to run sudo from the ssh terminal, the attempt was logged to a fiction file however in a real pentest detection must be avoided.
-- 
+- **Network misconfiguration** — forgot to disable VPN in order to access localhost services
+- **Accidental detection** — accidentally attempted to run `sudo` from the SSH terminal; the attempt was logged to a log file. In a real pentest, detection must be avoided at all times.
+
 ---
 
-##  Currently Learning
+## Currently Learning
 
 - [ ] Active Directory attack paths — BloodHound graph analysis
 - [ ] Windows privilege escalation techniques (WinPEAS, manual checks)
-- [ ] Linux privilege escalation techniques (Path, etc)
-- [ ] Improve advanced malware analysis in the air-gapped environment
-- [ ] Improve knowledge on web application attacks(XSS, SQL-injection) and how to prevent them-- this is already learnt however there is always new vunerablities that come about.
+- [ ] Linux privilege escalation techniques (PATH hijacking, etc.)
+- [ ] Advanced malware analysis in the air-gapped environment
+- [ ] Web application attacks (XSS, SQL injection) and mitigations — foundational knowledge is in place, but new vulnerabilities emerge constantly
 
 ---
 
-##  Goals
+## Goals
 
 - [ ] Complete 10 VulnHub machines across varying difficulty levels
 - [ ] Document a full red team exercise against the internal AD domain
 - [ ] Introduce SIEM logging (e.g. Splunk Free or Wazuh) to the Proxmox environment for blue team practice
-- [ ] Complete Cybersecurity Focused Courses
+- [ ] Complete cybersecurity-focused courses
 
 ---
 
-##  Repository Structure
+## Repository Structure
 
 ```
 /
@@ -145,7 +159,6 @@ Each entry follows the same structure: what I attempted, what worked, what didn'
 │   └── ad-lab/        # Active Directory lab exercises
 ├── notes/             # Reference notes (tools, commands, techniques)
 └── scripts/           # Custom scripts written during exercises
-
 ```
 
 ---
