@@ -113,7 +113,7 @@ root.txt  system.info
 
 ---
 
-## Wins
+## Wins (All Time)
 
 - Set up a fully functional Active Directory domain from scratch including group policy, user accounts, and DNS
 - Successfully completed various VulnHub machines from initial recon through to root
@@ -124,7 +124,7 @@ root.txt  system.info
 
 ---
 
-## Failures & Lessons
+## Failures & Lessons (All Time)
 
 - **Network misconfiguration** — forgot to disable VPN in order to access localhost services
 - **Accidental detection** — accidentally attempted to run `sudo` from the SSH terminal; the attempt was logged to a log file. In a real pentest, detection must be avoided at all times.
@@ -169,4 +169,4 @@ All activity documented here is performed in a private, isolated lab environment
 
 ---
 
-*This is a living document — updated as I learn, break things, and figure out why.*
+*Living Document*
