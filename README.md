@@ -23,13 +23,13 @@ A personal lab built to simulate enterprise environments and practise offensive 
 
 | Category | Tools / Concepts |
 |----------|-----------------|
-| **Reconnaissance** | Nmap, Netdiscover, enum4linux, OSINT |
+| **Reconnaissance** | Nmap, Netdiscover, enum4linux(used on parrot OS), OSINT |
 | **Exploitation** | Metasploit, manual CVE exploitation, Burp Suite |
-| **Active Directory** | BloodHound, PowerView, Kerberoasting, Pass-the-Hash, privilege escalation |
-| **Post-exploitation** | Mimikatz, lateral movement, persistence techniques |
+| **Active Directory** | BloodHound, Pass-the-Hash(using Mimikatz), privilege escalation |
+| **Post-exploitation** | Mimikatz, lateral movement(moving from a vunerable windows machine to Domain Controller), persistence techniques |
 | **Blue team / Defence** | Log analysis, Windows Event Viewer, basic incident response |
 | **Virtualisation** | Proxmox VE, VMware, VirtualBox, network segmentation |
-| **Operating systems** | Kali/Parrot Linux, Windows 10, Windows Server 2016 |
+| **Operating systems** | Kali/Parrot Linux, Windows 10, Windows Server |
 
 ---
 
@@ -138,6 +138,7 @@ root.txt  system.info
 - [ ] Linux privilege escalation techniques (PATH hijacking, etc.)
 - [ ] Advanced malware analysis in the air-gapped environment
 - [ ] Web application attacks (XSS, SQL injection) and mitigations — foundational knowledge is in place, but new vulnerabilities emerge constantly
+- [ ] Kerberoasting
 
 ---
 
