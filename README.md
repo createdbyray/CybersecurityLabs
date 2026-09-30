@@ -8,14 +8,14 @@ A personal lab built to simulate enterprise environments and practise offensive 
 
 | Host | Role | Key Details |
 |------|------|-------------|
-| **Proxmox PC** | Hypervisor | Hosts Windows 10, Windows Server 2016 (AD DC), and an air-gapped Windows 10 instance for isolated analysis |
+| **Proxmox PC** | Hypervisor | Hosts Windows 10, Windows Server (AD DC), and an air-gapped Windows 10 instance for isolated analysis |
 | **Windows 10 PC** | Attack targets | Runs intentionally vulnerable VMs sourced from [VulnHub](https://www.vulnhub.com/) |
 | **Parrot OS Laptop** | Attack platform | Used for reconnaissance, exploitation, and post-exploitation against lab targets |
 
 ### Network Topology
-- Proxmox environment simulates a small enterprise: domain controller, domain-joined clients, and a segmented air-gapped endpoint
-- VulnHub machines run on an isolated host-only network — no external exposure
-- Parrot OS attacks are contained entirely within the lab
+- Proxmox environment simulates a small enterprise: domain controller, domain-joined clients, and a segmented air-gapped endpoint(f0r malware analysis)
+- VulnHub machines run on an proxmox VM
+- Parrot OS External Thinkpad
 
 ---
 
