@@ -8,14 +8,14 @@ A personal lab built to simulate enterprise environments and practise offensive 
 
 | Host | Role | Key Details |
 |------|------|-------------|
-| **Proxmox PC** | Hypervisor | Hosts Windows 10, Windows Server (AD DC), and an air-gapped Windows 10 instance for isolated analysis |
-| **Windows 10 PC** | Attack targets | Runs intentionally vulnerable VMs sourced from [VulnHub](https://www.vulnhub.com/) |
-| **Parrot OS Laptop** | Attack platform | Used for reconnaissance, exploitation, and post-exploitation against lab targets |
+| **Proxmox PC** | Hypervisor | Hosts a Windows 10 client, a Windows Server Active Directory domain controller, an intentionally vulnerable VulnHub VM, and a separate Windows 10 VM used for malware analysis |
+| **Parrot OS Laptop (ThinkPad)** | Attack platform | Used for reconnaissance, exploitation, and post-exploitation against lab targets |
 
 ### Network Topology
-- Proxmox environment simulates a small enterprise: domain controller, domain-joined clients, and a segmented air-gapped endpoint(f0r malware analysis)
-- VulnHub machines run on an proxmox VM
-- Parrot OS External Thinkpad
+- The Proxmox environment simulates a small enterprise: a domain controller and a domain-joined client.
+- The AD machines have no internet access but do share my home wifi, so my Parrot laptop can reach and attack them from the same network. This is not full isolation from other devices on that network — moving the lab onto a dedicated VLAN is a goal (see below).
+- The malware analysis VM sits alone on an internal-only Proxmox bridge with no physical port attached, so it has no route to the internet, the home network, or other VMs. I take a clean snapshot before each run and revert afterwards. Samples are transferred by USB, and that USB is used only for the lab.
+- VulnHub machines run as VMs on Proxmox.
 
 ---
 
@@ -23,12 +23,13 @@ A personal lab built to simulate enterprise environments and practise offensive 
 
 | Category | Tools / Concepts |
 |----------|-----------------|
-| **Reconnaissance** | Nmap, Netdiscover, enum4linux(used on parrot OS), OSINT |
-| **Exploitation** | Metasploit, manual CVE exploitation, Burp Suite |
-| **Active Directory** | BloodHound, Pass-the-Hash(using Mimikatz), privilege escalation |
-| **Post-exploitation** | Mimikatz, lateral movement(moving from a vunerable windows machine to Domain Controller), persistence techniques |
+| **Reconnaissance** | Nmap, Netdiscover, enum4linux (from Parrot OS), Gobuster, OSINT |
+| **Exploitation** | Metasploit, Hydra, Burp Suite, OWASP ZAP, manual exploitation of known CVEs (WP2Shell WordPress core RCE chain) |
+| **Active Directory** | BloodHound(map out the AD config and users), Pass-the-Hash (using Mimikatz), privilege escalation |
+| **Post-exploitation** | Mimikatz, lateral movement (from a vulnerable Windows machine to the Domain Controller), web shell persistence (Weevely) |
 | **Blue team / Defence** | Log analysis, Windows Event Viewer, basic incident response |
-| **Virtualisation** | Proxmox VE, VMware, VirtualBox, network segmentation |
+| **Forensics & malware** | Autopsy, Ghidra (static analysis) |
+| **Virtualisation** | Proxmox VE, VMware, VirtualBox |
 | **Operating systems** | Kali/Parrot Linux, Windows 10, Windows Server |
 
 ---
@@ -41,7 +42,7 @@ Each entry follows the same structure: what I attempted, what worked, what didn'
 
 ### ICA1 | Difficulty: Easy | [VulnHub Link](https://www.vulnhub.com/entry/ica-1,748/)
 
-**Source:** VulnHub  
+**Source:** VulnHub
 **Date:** 12/06/2026
 
 **Objective**
@@ -70,20 +71,21 @@ I then ran:
 find / -type f -perm -04000 -ls 2>/dev/null
 ```
 This revealed a standard list apart from a custom-built application at `/opt/get_access`. Running it produced:
+        ############################
+        ######## ICA ########
+        
+        ACCESS TO THE SYSTEM
+        
+        ############################
+        
+        Server Information:
+        
+        Firewall: AIwall v9.5.2
+        OS: Debian 11 "bullseye"
+        Network: Local Secure Network 2 (LSN2) v2.4.1
+        All services are disabled. Accessing to the system is allowed only within working hours.
 
-```
-############################
-######## ICA ########
-### ACCESS TO THE SYSTEM ###
-############################
 
-Server Information:
-
-Firewall: AIwall v9.5.2
-OS: Debian 11 "bullseye"
-Network: Local Secure Network 2 (LSN2) v2.4.1
-All services are disabled. Accessing to the system is allowed only within working hours.
-```
 
 Running `strings` on the binary revealed it executes `cat /root/system.info` — this had to be the way in.
 
@@ -96,10 +98,10 @@ export PATH=/tmp:$PATH
 ```
 
 Running `/opt/get_access` then dropped me into a root shell. Verified with:
-```bash
-root@debian:/root# ls
-root.txt  system.info
-```
+  ```bash
+  root@debian:/root# ls
+  root.txt  system.info
+  ```
 
 **What worked**
 - Successfully employed various pentesting tools including Hydra and Nmap
@@ -115,12 +117,12 @@ root.txt  system.info
 
 ## Wins (All Time)
 
-- Set up a fully functional Active Directory domain from scratch including group policy, user accounts, and DNS
-- Successfully completed various VulnHub machines from initial recon through to root
-- Configured isolated network segments in Proxmox to prevent lab traffic touching the home network
-- Successfully decompiled malware using Ghidra to analyse its effects (Petya/GoldenEye and the Mischa Ransomware)
-- Successfully built a case report on a ransomware incident — case samples created via an intentionally compromised Windows VM using a hard drive cloning function, analysed using Autopsy
-- Successfully built a case report on a mock cybercriminal's activity using their phone, PC, and location data — case samples sourced online, analysed using Autopsy
+- Set up a working Active Directory domain from scratch, including group policy, user accounts, and DNS
+- Completed the VulnHub machine ICA1 from initial recon through to root (write-up above; more to come)
+- Exploited the WP2Shell WordPress core RCE chain (CVE-2026-60137 / CVE-2026-63030) against two WordPress instances in a private environment, using a custom Python script, and established persistence with a Weevely web shell
+- Ran and statically analysed two ransomware builders in a snapshotted, network-isolated VM using Ghidra: a reconstructed builder labelled Petya/GoldenEye (family unverified) and the leaked Mischa builder
+- Built a case report on a ransomware incident: samples came from an intentionally compromised Windows VM, cloned and analysed with Autopsy
+- Built a case report on a mock cybercriminal's activity using phone, PC, and location data, with case samples sourced online and analysed in Autopsy
 
 ---
 
@@ -133,10 +135,9 @@ root.txt  system.info
 
 ## Currently Learning
 
-- [ ] Active Directory attack paths — BloodHound graph analysis
 - [ ] Windows privilege escalation techniques (WinPEAS, manual checks)
 - [ ] Linux privilege escalation techniques (PATH hijacking, etc.)
-- [ ] Advanced malware analysis in the air-gapped environment
+- [ ] Advanced malware analysis in the isolated malware analysis VM
 - [ ] Web application attacks (XSS, SQL injection) and mitigations — foundational knowledge is in place, but new vulnerabilities emerge constantly
 - [ ] Kerberoasting
 
@@ -144,29 +145,17 @@ root.txt  system.info
 
 ## Goals
 
-- [ ] Complete 10 VulnHub machines across varying difficulty levels
+- [ ] Complete 10 VulnHub machines and write up each one
+- [ ] Move the lab onto a dedicated VLAN so vulnerable machines can't be reached from my home network
 - [ ] Document a full red team exercise against the internal AD domain
 - [ ] Introduce SIEM logging (e.g. Splunk Free or Wazuh) to the Proxmox environment for blue team practice
-- [ ] Complete cybersecurity-focused courses
+- [ ] Complete cybersecurity-focused courses and certifications
 
 ---
 
-## Repository Structure
+## Disclaimer
 
-```
-/
-├── writeups/          # Individual machine and exercise write-ups
-│   ├── vulnhub/       # VulnHub machine logs
-│   └── ad-lab/        # Active Directory lab exercises
-├── notes/             # Reference notes (tools, commands, techniques)
-└── scripts/           # Custom scripts written during exercises
-```
-
----
-
-## ⚠️ Disclaimer
-
-All activity documented here is performed in a private, isolated lab environment against systems I own or have explicit permission to test. Nothing here is used against live systems or external networks.
+All activity documented here is performed against systems I own, in a private lab, with no external targets. Nothing here is used against live systems or networks I don't own. Malware analysis is done in snapshotted virtual machines that are reverted after each run.
 
 ---
 
